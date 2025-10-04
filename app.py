@@ -1,17 +1,17 @@
 import streamlit as st
 import pandas as pd
 
-st.title("🧮 Data Reconciliation Tool (Free Streamlit Version)")
+st.title("🧮 Data Reconciliation Tool (Improved)")
 
 def safe_read_csv(uploaded_file):
     for encoding in ['utf-8', 'latin1', 'ISO-8859-1', 'cp1252', 'unicode_escape']:
         try:
-            uploaded_file.seek(0)  # Reset to start of file before reading
+            uploaded_file.seek(0)
             return pd.read_csv(
                 uploaded_file,
                 encoding=encoding,
-                on_bad_lines='skip',       # Skip bad/malformed lines
-                encoding_errors='ignore'    # Ignore encoding errors
+                on_bad_lines='skip',
+                encoding_errors='ignore'
             )
         except Exception:
             continue
@@ -33,6 +33,11 @@ if uploaded_file1 and uploaded_file2:
         df2 = safe_read_csv(uploaded_file2)
 
     if df1 is not None and df2 is not None:
+        # --- मुख्य क्लीनिंग स्टेप्स ---
+        # सब कॉलम नामों के आगे-पीछे स्पेस हटाएं
+        df1.rename(columns=lambda x: x.strip(), inplace=True)
+        df2.rename(columns=lambda x: x.strip(), inplace=True)
+
         st.write("### **Choose columns to match (can pick multiple)**")
         col1 = st.multiselect("File 1 columns", df1.columns)
         col2 = st.multiselect("File 2 columns", df2.columns)
@@ -43,10 +48,20 @@ if uploaded_file1 and uploaded_file2:
             else:
                 if st.button("Run Reconciliation"):
                     with st.spinner("Reconciling..."):
-                        key1 = df1[col1].astype(str).agg('|'.join, axis=1).str.lower()
-                        key2 = df2[col2].astype(str).agg('|'.join, axis=1).str.lower()
+                        # चुने गए कॉलम में सभी स्पेस, कैपिटल और डाटा टाइप को स्टैंडर्ड करो
+                        for col in col1:
+                            df1[col] = df1[col].astype(str).str.strip().str.lower()
+                        for col in col2:
+                            df2[col] = df2[col].astype(str).str.strip().str.lower()
+
+                        key1 = df1[col1].agg('|'.join, axis=1)
+                        key2 = df2[col2].agg('|'.join, axis=1)
                         df2_map = pd.Series(df2.index, index=key2)
                         matches, mismatched = [], []
+
+                        # Debug: यह दिखाओ कि दोनों तरफ keys क्या बन रही हैं
+                        st.write("File 1 keys sample:", key1.head())
+                        st.write("File 2 keys sample:", key2.head())
 
                         for i, k in enumerate(key1):
                             idx = df2_map.get(k, None)
