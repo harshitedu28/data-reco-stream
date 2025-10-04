@@ -4,16 +4,18 @@ import pandas as pd
 st.title("🧮 Data Reconciliation Tool (Free Streamlit Version)")
 
 def safe_read_csv(uploaded_file):
-    for encoding in ['utf-8', 'latin1']:
+    for encoding in ['utf-8', 'latin1', 'ISO-8859-1', 'cp1252', 'unicode_escape']:
         try:
-            return pd.read_csv(uploaded_file, encoding=encoding)
-        except pd.errors.ParserError:
-            uploaded_file.seek(0)
+            uploaded_file.seek(0)  # Reset to start of file before reading
+            return pd.read_csv(
+                uploaded_file,
+                encoding=encoding,
+                on_bad_lines='skip',       # Skip bad/malformed lines
+                encoding_errors='ignore'    # Ignore encoding errors
+            )
+        except Exception:
             continue
-        except UnicodeDecodeError:
-            uploaded_file.seek(0)
-            continue
-    st.error("Failed to read CSV file with supported encodings.")
+    st.error("Failed to read CSV file with supported encodings and skipping bad lines.")
     return None
 
 uploaded_file1 = st.file_uploader("📂 Upload File 1 (CSV/Excel)", type=["csv", "xlsx"])
