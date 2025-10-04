@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 
-st.title("🧮 Data Reconciliation Tool (Search All Rows)")
+st.title("🧮 Data Reconciliation Tool (Full Debug & Match)")
 
 def safe_read_csv(uploaded_file):
     for encoding in ['utf-8', 'latin1', 'ISO-8859-1', 'cp1252', 'unicode_escape']:
@@ -33,19 +33,34 @@ if uploaded_file1 and uploaded_file2:
         df2 = safe_read_csv(uploaded_file2)
 
     if df1 is not None and df2 is not None:
+        # Column names cleaning for both files
         df1.rename(columns=lambda x: x.strip(), inplace=True)
         df2.rename(columns=lambda x: x.strip(), inplace=True)
 
         st.write("### **Choose matching columns (one from each file):**")
-        col1 = st.selectbox("File 1 column (e.g., Invoice Number/Billing Doc)", df1.columns)
-        col2 = st.selectbox("File 2 column (e.g., Billing Document/Invoice Number)", df2.columns)
+        col1 = st.selectbox("File 1 column", df1.columns)
+        col2 = st.selectbox("File 2 column", df2.columns)
 
         if st.button("Run Reconciliation"):
-            # Clean & standardize for matching
-            df1['_match_key'] = df1[col1].astype(str).str.strip().str.lower()
-            df2['_match_key'] = df2[col2].astype(str).str.strip().str.lower()
+            # Super-strict cleaning: remove all spaces/tabs/newlines inside as well
+            df1['_match_key'] = (
+                df1[col1].astype(str)
+                .str.replace('\s+', '', regex=True)
+                .str.strip()
+                .str.lower()
+            )
+            df2['_match_key'] = (
+                df2[col2].astype(str)
+                .str.replace('\s+', '', regex=True)
+                .str.strip()
+                .str.lower()
+            )
 
-            # LEFT JOIN: search file 1 values in all file 2 rows
+            # Debug: display sample key values and their lengths
+            st.write("File 1 sample keys:", [(v, len(v)) for v in df1['_match_key'].head(10)])
+            st.write("File 2 sample keys:", [(v, len(v)) for v in df2['_match_key'].head(10)])
+
+            # Actual reconciliation using LEFT JOIN
             merged = df1.merge(
                 df2,
                 how='left',
@@ -55,7 +70,9 @@ if uploaded_file1 and uploaded_file2:
                 indicator=True
             )
 
-            st.write(f"✅ Matched: {(merged['_merge']=='both').sum()}  ❌ Unmatched: {(merged['_merge']=='left_only').sum()}  **Total:** {len(merged)}")
+            st.write(f"✅ Matched: {(merged['_merge']=='both').sum()} "
+                     f"❌ Unmatched: {(merged['_merge']=='left_only').sum()}  "
+                     f"**Total:** {len(merged)}")
 
             merged['Status'] = merged['_merge'].replace({'both':'Matched', 'left_only':'Unmatched', 'right_only':'Unknown'})
             st.write("### Reconciliation Result Table")
@@ -63,6 +80,5 @@ if uploaded_file1 and uploaded_file2:
 
             csv_result = merged.to_csv(index=False)
             st.download_button("⬇ Download Result (CSV)", csv_result, file_name="Reconciliation_Result.csv")
-
 else:
     st.info("Upload both files to begin.")
