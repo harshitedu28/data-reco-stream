@@ -10,7 +10,7 @@ if uploaded_file1 and uploaded_file2:
     if uploaded_file1.name.endswith('xlsx'):
         df1 = pd.read_excel(uploaded_file1)
     else:
-        df1 = pd.read_csv(uploaded_file1)
+        try:     df1 = pd.read_csv(uploaded_file1, encoding='utf-8') except UnicodeDecodeError:     df1 = pd.read_csv(uploaded_file1, encoding='latin1')
     if uploaded_file2.name.endswith('xlsx'):
         df2 = pd.read_excel(uploaded_file2)
     else:
