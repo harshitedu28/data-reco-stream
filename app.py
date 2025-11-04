@@ -113,6 +113,12 @@ def logout_button():
 # ---------------------------------------------
 # MAIN APP (AFTER LOGIN)
 # ---------------------------------------------
+# TEMP: First time admin setup
+add_user("admin", "admin123")
+st.session_state.authenticated = True
+st.session_state.current_user = "admin"
+st.rerun()
+
 if not st.session_state.authenticated:
     login_page()
 
