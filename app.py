@@ -17,7 +17,7 @@ os.makedirs(DB_DIR, exist_ok=True)
 SECURITY_DB = os.path.join(DB_DIR, "security.db")
 
 # ---------------------------------------------
-# SECURITY SETUP
+# SECURITY FUNCTIONS
 # ---------------------------------------------
 def init_security_db():
     conn = sqlite3.connect(SECURITY_DB)
@@ -35,7 +35,7 @@ def hash_password(password):
 
 def add_user(username, password):
     conn = sqlite3.connect(SECURITY_DB)
-    conn.execute("INSERT OR REPLACE INTO users (username, password_hash) VALUES (?, ?)", 
+    conn.execute("INSERT OR REPLACE INTO users (username, password_hash) VALUES (?, ?)",
                  (username, hash_password(password)))
     conn.commit()
     conn.close()
@@ -47,6 +47,14 @@ def validate_user(username, password):
     row = cur.fetchone()
     conn.close()
     return row and row[0] == hash_password(password)
+
+def user_count():
+    conn = sqlite3.connect(SECURITY_DB)
+    cur = conn.cursor()
+    cur.execute("SELECT COUNT(*) FROM users")
+    count = cur.fetchone()[0]
+    conn.close()
+    return count
 
 init_security_db()
 
@@ -85,6 +93,22 @@ if "current_module" not in st.session_state:
     st.session_state.current_module = "📂 Data Source"
 
 # ---------------------------------------------
+# FIRST TIME SETUP PAGE
+# ---------------------------------------------
+def first_time_setup():
+    st.markdown("<h3 style='text-align:center;'>🛠 First-Time Setup</h3>", unsafe_allow_html=True)
+    st.info("No user found. Please create an admin account to continue.")
+    admin_user = st.text_input("👤 Create Admin Username")
+    admin_pass = st.text_input("🔑 Create Admin Password", type="password")
+    if st.button("Create Admin User"):
+        if admin_user.strip() and admin_pass.strip():
+            add_user(admin_user, admin_pass)
+            st.success(f"✅ Admin user '{admin_user}' created successfully! Please login now.")
+            st.rerun()
+        else:
+            st.warning("Please enter valid username and password.")
+
+# ---------------------------------------------
 # LOGIN PAGE
 # ---------------------------------------------
 def login_page():
@@ -102,36 +126,32 @@ def login_page():
             st.error("❌ Invalid username or password")
 
 # ---------------------------------------------
-# LOGOUT
+# LOGOUT BUTTON
 # ---------------------------------------------
 def logout_button():
+    st.sidebar.markdown("---")
     if st.sidebar.button("🚪 Logout"):
         st.session_state.authenticated = False
         st.session_state.current_user = None
         st.rerun()
 
 # ---------------------------------------------
-# MAIN APP (AFTER LOGIN)
+# MAIN APP
 # ---------------------------------------------
-# TEMP: First time admin setup
-add_user("admin", "admin123")
-st.session_state.authenticated = True
-st.session_state.current_user = "admin"
-st.rerun()
+if user_count() == 0:
+    first_time_setup()
 
-if not st.session_state.authenticated:
+elif not st.session_state.authenticated:
     login_page()
 
 else:
     logout_button()
-
     st.sidebar.title("📋 Navigation Menu")
     module = st.sidebar.radio(
         "Select Module",
         ["🏠 Dashboard", "📂 Data Source", "🗄 Database", "🔗 Mapping", "🔒 Security"],
         index=["🏠 Dashboard", "📂 Data Source", "🗄 Database", "🔗 Mapping", "🔒 Security"].index(st.session_state.current_module)
     )
-
     st.session_state.current_module = module
 
     # -------------------------------------------------
