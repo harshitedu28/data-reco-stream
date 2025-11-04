@@ -63,8 +63,18 @@ elif module == "📂 Data Source":
         ["Excel (.xlsx)", "CSV (.csv)", "JSON (.json)"]
     )
 
-    # Step 2: Choose target database
-    st.markdown("### 2️⃣ Select Target Database")
+    # Step 2: Upload Files
+    st.markdown("### 2️⃣ Upload Data Files")
+    c1, c2 = st.columns(2)
+    with c1:
+        uploaded_file1 = st.file_uploader("Upload Source A", type=["xlsx", "csv", "json"])
+    with c2:
+        uploaded_file2 = st.file_uploader("Upload Source B", type=["xlsx", "csv", "json"])
+
+    df1, df2 = None, None
+
+    # Step 3: Select Target Database
+    st.markdown("### 3️⃣ Select Target Database")
     available_dbs = list_databases()
 
     if not available_dbs:
@@ -80,25 +90,16 @@ elif module == "📂 Data Source":
     else:
         selected_db = st.selectbox("Select Existing Database", available_dbs)
 
-    # Step 3: Upload Files
-    st.markdown("### 3️⃣ Upload Data Files")
-    c1, c2 = st.columns(2)
-    with c1:
-        uploaded_file1 = st.file_uploader("Upload Source A", type=["xlsx", "csv", "json"])
-    with c2:
-        uploaded_file2 = st.file_uploader("Upload Source B", type=["xlsx", "csv", "json"])
-
-    # Step 4: Import Button — Controlled Import
-    st.markdown("### 4️⃣ Import Data")
-    import_clicked = st.button("📥 Import File(s)")
-
-    if import_clicked:
+    # Step 4: Import Data Button
+    st.markdown("### 4️⃣ Import Data to Database")
+    if st.button("📥 Import Data to Database"):
         if not uploaded_file1 and not uploaded_file2:
             st.warning("⚠️ Please upload at least one file before importing.")
             st.stop()
 
-        # Function to import file based on type
-        def import_file(file, source_name):
+        conn = connect_db(selected_db)
+
+        def import_file(file, name):
             if file is None:
                 return None
             if data_source == "Excel (.xlsx)":
@@ -107,17 +108,13 @@ elif module == "📂 Data Source":
                 df = pd.read_csv(file)
             else:
                 df = pd.read_json(file)
-            st.success(f"✅ {source_name} imported successfully!")
-            st.write(f"### 🔍 Preview {source_name}")
+            st.success(f"✅ {name} imported successfully!")
+            st.write(f"### 🔍 Preview {name}")
             st.dataframe(df.head(), use_container_width=True)
             return df
 
         df1 = import_file(uploaded_file1, "Source A")
         df2 = import_file(uploaded_file2, "Source B")
-
-        # Step 5: Save data into DB
-        st.markdown("### 5️⃣ Save Imported Data to Database")
-        conn = connect_db(selected_db)
 
         if df1 is not None:
             table_a = st.text_input("Enter table name for Source A", "source_a")
