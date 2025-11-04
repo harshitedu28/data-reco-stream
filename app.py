@@ -4,7 +4,7 @@ import sqlite3
 import os
 
 # -------------------------------------------------
-# APP CONFIG
+# CONFIG
 # -------------------------------------------------
 st.set_page_config(page_title="🧩 Smart Reconciliation Platform", layout="wide")
 st.markdown("<h1 style='text-align:center;'>🧮 Smart Reconciliation Platform</h1>", unsafe_allow_html=True)
@@ -43,7 +43,7 @@ module = st.sidebar.radio(
 # -------------------------------------------------
 if module == "📂 Data Source":
     st.subheader("📂 Data Source Module")
-    st.write("Upload single data file and import it into a database.")
+    st.write("Upload single data file and import it into a selected database.")
 
     # Step 1: Choose file type
     st.markdown("### 1️⃣ Select Data Source Type")
@@ -65,24 +65,24 @@ if module == "📂 Data Source":
         st.success("✅ File uploaded successfully!")
         st.dataframe(df.head(), use_container_width=True)
 
-    # Step 3: Database selection
+    # Step 3: Select Database (Dropdown + Create Option)
     st.markdown("### 3️⃣ Select Target Database")
     available_dbs = list_databases()
 
-    if not available_dbs:
-        st.warning("⚠️ Database not available. Do you want to create a Database?")
-        choice = st.radio("", ["Yes", "No"], key="create_db_radio")
-
-        if choice == "Yes":
+    if available_dbs:
+        selected_db = st.selectbox("Choose Existing Database", available_dbs)
+        st.info(f"Selected Database: {selected_db}")
+    else:
+        st.warning("⚠️ No database found.")
+        create_option = st.radio("Do you want to create a new Database?", ["Yes", "No"], key="create_db_radio")
+        if create_option == "Yes":
             st.info("Redirecting you to Database Module…")
             st.session_state["redirect_to_db"] = True
             st.stop()
         else:
             st.stop()
-    else:
-        selected_db = st.selectbox("Select Existing Database", available_dbs)
 
-    # Step 4: Import data to DB
+    # Step 4: Import Data
     st.markdown("### 4️⃣ Import Data to Database")
 
     if st.button("📥 Import Data"):
@@ -93,7 +93,7 @@ if module == "📂 Data Source":
         conn = connect_db(selected_db)
         table_name = st.text_input("Enter Table Name", "imported_data")
 
-        if not table_name:
+        if not table_name.strip():
             st.warning("Please enter a valid table name.")
         else:
             df.to_sql(table_name, conn, if_exists="replace", index=False)
@@ -105,20 +105,20 @@ if module == "📂 Data Source":
 # -------------------------------------------------
 elif module == "🗄 Database":
     st.subheader("🗄 Database Management Module")
-    existing = list_databases()
 
+    existing = list_databases()
     if existing:
         st.markdown("### 📋 Existing Databases")
         st.table(pd.DataFrame({"Database": existing}))
     else:
-        st.info("No database created yet.")
+        st.info("No databases created yet.")
 
     st.markdown("---")
     new_db_name = st.text_input("Enter New Database Name (without .db)")
     if st.button("Create Database"):
         if new_db_name.strip():
             path = create_database(new_db_name)
-            st.success(f"✅ Database '{new_db_name}.db' created at {path}")
+            st.success(f"✅ Database '{new_db_name}.db' created successfully at {path}")
         else:
             st.warning("Please enter a valid name.")
 
@@ -126,7 +126,7 @@ elif module == "🗄 Database":
 # OTHER MODULES
 # -------------------------------------------------
 elif module == "🏠 Dashboard":
-    st.subheader("📊 Dashboard Coming Soon")
+    st.subheader("📊 Dashboard (Coming Soon)")
 
 elif module == "🔗 Mapping":
     st.subheader("🔗 Mapping Module (Under Design)")
