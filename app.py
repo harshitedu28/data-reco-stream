@@ -6,8 +6,8 @@ import os
 # -------------------------------------------------
 # APP CONFIG
 # -------------------------------------------------
-st.set_page_config(page_title="🧮 Smart Reconciliation Platform", layout="wide")
-st.markdown("<h1 style='text-align:center;'>🧩 Smart Reconciliation Platform</h1>", unsafe_allow_html=True)
+st.set_page_config(page_title="🧩 Smart Reconciliation Platform", layout="wide")
+st.markdown("<h1 style='text-align:center;'>🧮 Smart Reconciliation Platform</h1>", unsafe_allow_html=True)
 
 DB_DIR = "databases"
 os.makedirs(DB_DIR, exist_ok=True)
@@ -88,42 +88,44 @@ elif module == "📂 Data Source":
     with c2:
         uploaded_file2 = st.file_uploader("Upload Source B", type=["xlsx", "csv", "json"])
 
-    if uploaded_file1 or uploaded_file2:
-        if uploaded_file1:
+    # Step 4: Import Button — Controlled Import
+    st.markdown("### 4️⃣ Import Data")
+    import_clicked = st.button("📥 Import File(s)")
+
+    if import_clicked:
+        if not uploaded_file1 and not uploaded_file2:
+            st.warning("⚠️ Please upload at least one file before importing.")
+            st.stop()
+
+        # Function to import file based on type
+        def import_file(file, source_name):
+            if file is None:
+                return None
             if data_source == "Excel (.xlsx)":
-                df1 = pd.read_excel(uploaded_file1)
+                df = pd.read_excel(file)
             elif data_source == "CSV (.csv)":
-                df1 = pd.read_csv(uploaded_file1)
+                df = pd.read_csv(file)
             else:
-                df1 = pd.read_json(uploaded_file1)
+                df = pd.read_json(file)
+            st.success(f"✅ {source_name} imported successfully!")
+            st.write(f"### 🔍 Preview {source_name}")
+            st.dataframe(df.head(), use_container_width=True)
+            return df
 
-            st.success("✅ Source A imported successfully!")
-            st.write("### 🔍 Preview Source A")
-            st.dataframe(df1.head(), use_container_width=True)
+        df1 = import_file(uploaded_file1, "Source A")
+        df2 = import_file(uploaded_file2, "Source B")
 
-        if uploaded_file2:
-            if data_source == "Excel (.xlsx)":
-                df2 = pd.read_excel(uploaded_file2)
-            elif data_source == "CSV (.csv)":
-                df2 = pd.read_csv(uploaded_file2)
-            else:
-                df2 = pd.read_json(uploaded_file2)
-
-            st.success("✅ Source B imported successfully!")
-            st.write("### 🔍 Preview Source B")
-            st.dataframe(df2.head(), use_container_width=True)
-
-        # Step 4: Save data into DB
-        st.markdown("### 4️⃣ Save Imported Data to Database")
+        # Step 5: Save data into DB
+        st.markdown("### 5️⃣ Save Imported Data to Database")
         conn = connect_db(selected_db)
 
-        if uploaded_file1:
+        if df1 is not None:
             table_a = st.text_input("Enter table name for Source A", "source_a")
             if st.button("💾 Save Source A to DB"):
                 df1.to_sql(table_a, conn, if_exists="replace", index=False)
                 st.success(f"✅ '{table_a}' table saved successfully in '{selected_db}'")
 
-        if uploaded_file2:
+        if df2 is not None:
             table_b = st.text_input("Enter table name for Source B", "source_b")
             if st.button("💾 Save Source B to DB"):
                 df2.to_sql(table_b, conn, if_exists="replace", index=False)
@@ -194,4 +196,4 @@ elif module == "🔗 Mapping":
                     mapping[col] = mapped
 
             st.json(mapping)
-            st.success("✅ Mapping ready (visual arrow UI will be next).")
+            st.success("✅ Mapping ready (visual arrow UI coming next).")
