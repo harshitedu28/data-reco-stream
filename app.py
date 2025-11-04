@@ -3,173 +3,169 @@ import pandas as pd
 import sqlite3
 import os
 
-# -----------------------------------------------
+# -------------------------------------------------
 # APP CONFIG
-# -----------------------------------------------
-st.set_page_config(page_title="🧩 Smart Reconciliation Suite", layout="wide")
+# -------------------------------------------------
+st.set_page_config(page_title="🧩 Smart Reconciliation Platform", layout="wide")
 st.markdown("<h1 style='text-align:center;'>🧮 Smart Reconciliation Platform</h1>", unsafe_allow_html=True)
 
-# -----------------------------------------------
-# UTILITIES
-# -----------------------------------------------
 DB_DIR = "databases"
 os.makedirs(DB_DIR, exist_ok=True)
 
+# -------------------------------------------------
+# UTILITY FUNCTIONS
+# -------------------------------------------------
 def list_databases():
-    """List available SQLite database files."""
+    """List all available SQLite DBs"""
     return [f for f in os.listdir(DB_DIR) if f.endswith(".db")]
 
 def create_database(db_name):
-    """Create new SQLite database file."""
+    """Create new DB file"""
     db_path = os.path.join(DB_DIR, f"{db_name}.db")
     conn = sqlite3.connect(db_path)
     conn.close()
     return db_path
 
 def connect_db(db_name):
-    """Connect to a specific database."""
+    """Connect to DB"""
     db_path = os.path.join(DB_DIR, db_name)
     return sqlite3.connect(db_path)
 
-# -----------------------------------------------
-# SIDEBAR MENU
-# -----------------------------------------------
+# -------------------------------------------------
+# SIDEBAR NAVIGATION
+# -------------------------------------------------
 st.sidebar.title("📋 Navigation Menu")
 
 module = st.sidebar.radio(
     "Select Module",
     ["🏠 Dashboard", "📂 Data Source", "🗄 Database", "🔗 Mapping"],
-    index=0
+    index=1
 )
 
-# -----------------------------------------------
-# MODULE 1: DASHBOARD (placeholder)
-# -----------------------------------------------
+# -------------------------------------------------
+# 🏠 DASHBOARD
+# -------------------------------------------------
 if module == "🏠 Dashboard":
     st.subheader("📊 Dashboard Overview (Coming Soon)")
-    st.info("This module will show reconciliation summary, success rates, logs, and recent mappings.")
+    st.info("This will show stats, logs, and mapping history later.")
 
-
-# -----------------------------------------------
-# MODULE 2: DATA SOURCE
-# -----------------------------------------------
+# -------------------------------------------------
+# 📂 DATA SOURCE MODULE
+# -------------------------------------------------
 elif module == "📂 Data Source":
     st.subheader("📂 Data Source Module")
-    st.write("Import your data from various formats and store it into a database for mapping & reconciliation.")
+    st.write("Upload data from Excel/CSV/JSON and save it to a database for reconciliation or mapping.")
 
-    # Step 1: Choose Data Source Type
+    # Step 1: Select data source type
     data_source = st.selectbox(
         "Select Data Source Type",
-        ["Excel (.xlsx)", "CSV (.csv)", "JSON (.json)", "SQL Query (coming soon)", "API Endpoint (coming soon)"]
+        ["Excel (.xlsx)", "CSV (.csv)", "JSON (.json)"]
     )
 
-    # Step 2: Choose Target Database
-    st.markdown("### 🗄 Select Target Database to Store Imported Data")
+    # Step 2: Check available databases
+    st.markdown("### 🗄 Select Target Database")
     available_dbs = list_databases()
 
     if not available_dbs:
         st.warning("⚠️ No database available.")
         create_db_choice = st.radio("Database not available. Do you want to create a Database?", ["Yes", "No"])
+
         if create_db_choice == "Yes":
             st.session_state["redirect_to_db"] = True
             st.info("Redirecting you to Database Module...")
         else:
             st.stop()
     else:
-        selected_db = st.selectbox("Select existing database", available_dbs)
+        selected_db = st.selectbox("Select Database", available_dbs)
 
-        # Step 3: Upload Files
-        st.markdown("### 📥 Upload Files")
+        # Step 3: Upload files
+        st.markdown("### 📥 Upload Source Files")
         c1, c2 = st.columns(2)
         with c1:
-            uploaded_a = st.file_uploader("Upload Source A", type=["csv", "xlsx", "json"])
+            uploaded_file1 = st.file_uploader("Upload Source A", type=["xlsx", "csv", "json"])
         with c2:
-            uploaded_b = st.file_uploader("Upload Source B", type=["csv", "xlsx", "json"])
+            uploaded_file2 = st.file_uploader("Upload Source B", type=["xlsx", "csv", "json"])
 
-        # Step 4: Load & Save Data
-        if uploaded_a and uploaded_b:
+        if uploaded_file1 and uploaded_file2:
+            # Read files
             if data_source == "Excel (.xlsx)":
-                df_a = pd.read_excel(uploaded_a)
-                df_b = pd.read_excel(uploaded_b)
+                df1 = pd.read_excel(uploaded_file1)
+                df2 = pd.read_excel(uploaded_file2)
             elif data_source == "CSV (.csv)":
-                df_a = pd.read_csv(uploaded_a)
-                df_b = pd.read_csv(uploaded_b)
+                df1 = pd.read_csv(uploaded_file1)
+                df2 = pd.read_csv(uploaded_file2)
             elif data_source == "JSON (.json)":
-                df_a = pd.read_json(uploaded_a)
-                df_b = pd.read_json(uploaded_b)
+                df1 = pd.read_json(uploaded_file1)
+                df2 = pd.read_json(uploaded_file2)
             else:
-                st.error("Unsupported format for now.")
+                st.error("Unsupported format.")
                 st.stop()
 
             st.success("✅ Data loaded successfully!")
 
-            st.write("### 🔍 Source A Preview")
-            st.dataframe(df_a.head(), use_container_width=True)
-            st.write("### 🔍 Source B Preview")
-            st.dataframe(df_b.head(), use_container_width=True)
+            # Preview data
+            st.write("### 🔍 Preview Source A")
+            st.dataframe(df1.head(), use_container_width=True)
+            st.write("### 🔍 Preview Source B")
+            st.dataframe(df2.head(), use_container_width=True)
 
             # Save to DB
+            st.markdown("### 💾 Save Data into Database")
             table_a = st.text_input("Enter table name for Source A", "source_a")
             table_b = st.text_input("Enter table name for Source B", "source_b")
 
             if st.button("💾 Save to Database"):
                 try:
                     conn = connect_db(selected_db)
-                    df_a.to_sql(table_a, conn, if_exists="replace", index=False)
-                    df_b.to_sql(table_b, conn, if_exists="replace", index=False)
+                    df1.to_sql(table_a, conn, if_exists="replace", index=False)
+                    df2.to_sql(table_b, conn, if_exists="replace", index=False)
                     conn.close()
-                    st.success(f"🎉 Data saved to '{selected_db}' successfully!")
+                    st.success(f"🎉 Data saved successfully in '{selected_db}' as '{table_a}' and '{table_b}'.")
                 except Exception as e:
-                    st.error(f"Error saving to DB: {e}")
+                    st.error(f"❌ Error saving data: {e}")
 
-
-# -----------------------------------------------
-# MODULE 3: DATABASE MANAGEMENT
-# -----------------------------------------------
+# -------------------------------------------------
+# 🗄 DATABASE MODULE
+# -------------------------------------------------
 elif module == "🗄 Database":
     st.subheader("🗄 Database Management Module")
-    st.write("Create, view, or manage multiple databases to store imported data.")
+    st.write("Create or manage multiple databases for storing imported data.")
 
     existing_dbs = list_databases()
-    st.markdown("### 📋 Existing Databases")
     if existing_dbs:
-        st.table(pd.DataFrame({"Databases": existing_dbs}))
+        st.markdown("### 📋 Existing Databases")
+        st.table(pd.DataFrame({"Database Name": existing_dbs}))
     else:
-        st.info("No databases created yet.")
+        st.info("No database available yet.")
 
     st.markdown("---")
     st.markdown("### ➕ Create New Database")
+
     new_db_name = st.text_input("Enter new database name (without extension)")
     if st.button("Create Database"):
         if new_db_name.strip():
             db_path = create_database(new_db_name)
             st.success(f"✅ Database '{new_db_name}.db' created successfully at {db_path}")
         else:
-            st.warning("Please enter a valid name.")
+            st.warning("Please enter a valid database name.")
 
-
-# -----------------------------------------------
-# MODULE 4: MAPPING DESIGN
-# -----------------------------------------------
+# -------------------------------------------------
+# 🔗 MAPPING MODULE
+# -------------------------------------------------
 elif module == "🔗 Mapping":
-    st.subheader("🔗 Mapping Module (Visual Design)")
+    st.subheader("🔗 Mapping Module")
+    st.write("Visually map fields between Source A and Source B.")
 
-    st.write("""
-    Here you can design mappings between columns of Source A and Source B.
-    Both sides show column names; you can visually map them via selection or connection arrows.
-    """)
-
-    # Select DB and Tables
     available_dbs = list_databases()
     if not available_dbs:
-        st.warning("⚠️ No database found. Please create one first in the Database Module.")
+        st.warning("⚠️ No database found. Please create one in the Database Module.")
     else:
-        selected_db = st.selectbox("Select database", available_dbs)
+        selected_db = st.selectbox("Select Database", available_dbs)
         conn = connect_db(selected_db)
         tables = pd.read_sql_query("SELECT name FROM sqlite_master WHERE type='table';", conn)["name"].tolist()
 
         if len(tables) < 2:
-            st.warning("You need at least two tables to create mapping.")
+            st.warning("You need at least two tables to create a mapping.")
         else:
             col1, col2 = st.columns(2)
             with col1:
@@ -183,15 +179,12 @@ elif module == "🔗 Mapping":
 
             conn.close()
 
-            # Field Mapping UI
-            st.markdown("### ⚙️ Field Mapping Design")
-
+            st.markdown("### ⚙️ Field Mapping")
             mapping = {}
             for col in df_a.columns:
-                mapped_to = st.selectbox(f"{col} →", ["-- None --"] + list(df_b.columns), key=f"map_{col}")
-                if mapped_to != "-- None --":
-                    mapping[col] = mapped_to
+                mapped = st.selectbox(f"{col} →", ["-- None --"] + list(df_b.columns), key=f"map_{col}")
+                if mapped != "-- None --":
+                    mapping[col] = mapped
 
             st.json(mapping)
-
-            st.success("✅ Mapping structure ready! (Visual linking arrows can be added in next enhancement)")
+            st.success("✅ Mapping ready (visual arrows can be added later).")
