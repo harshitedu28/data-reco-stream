@@ -6,8 +6,8 @@ import os
 # -------------------------------------------------
 # APP CONFIG
 # -------------------------------------------------
-st.set_page_config(page_title="🧩 Smart Reconciliation Platform", layout="wide")
-st.markdown("<h1 style='text-align:center;'>🧮 Smart Reconciliation Platform</h1>", unsafe_allow_html=True)
+st.set_page_config(page_title="🧮 Smart Reconciliation Platform", layout="wide")
+st.markdown("<h1 style='text-align:center;'>🧩 Smart Reconciliation Platform</h1>", unsafe_allow_html=True)
 
 DB_DIR = "databases"
 os.makedirs(DB_DIR, exist_ok=True)
@@ -47,23 +47,24 @@ module = st.sidebar.radio(
 # -------------------------------------------------
 if module == "🏠 Dashboard":
     st.subheader("📊 Dashboard Overview (Coming Soon)")
-    st.info("This will show stats, logs, and mapping history later.")
+    st.info("This will display reconciliation summaries and stats later.")
 
 # -------------------------------------------------
 # 📂 DATA SOURCE MODULE
 # -------------------------------------------------
 elif module == "📂 Data Source":
     st.subheader("📂 Data Source Module")
-    st.write("Upload data from Excel/CSV/JSON and save it to a database for reconciliation or mapping.")
+    st.write("Upload data from Excel/CSV/JSON and import into a database.")
 
     # Step 1: Select data source type
+    st.markdown("### 1️⃣ Select Data Source Type")
     data_source = st.selectbox(
-        "Select Data Source Type",
+        "Choose Data Type",
         ["Excel (.xlsx)", "CSV (.csv)", "JSON (.json)"]
     )
 
-    # Step 2: Check available databases
-    st.markdown("### 🗄 Select Target Database")
+    # Step 2: Choose target database
+    st.markdown("### 2️⃣ Select Target Database")
     available_dbs = list_databases()
 
     if not available_dbs:
@@ -72,57 +73,63 @@ elif module == "📂 Data Source":
 
         if create_db_choice == "Yes":
             st.session_state["redirect_to_db"] = True
-            st.info("Redirecting you to Database Module...")
+            st.info("Redirecting you to Database Module…")
+            st.stop()
         else:
             st.stop()
     else:
-        selected_db = st.selectbox("Select Database", available_dbs)
+        selected_db = st.selectbox("Select Existing Database", available_dbs)
 
-        # Step 3: Upload files
-        st.markdown("### 📥 Upload Source Files")
-        c1, c2 = st.columns(2)
-        with c1:
-            uploaded_file1 = st.file_uploader("Upload Source A", type=["xlsx", "csv", "json"])
-        with c2:
-            uploaded_file2 = st.file_uploader("Upload Source B", type=["xlsx", "csv", "json"])
+    # Step 3: Upload Files
+    st.markdown("### 3️⃣ Upload Data Files")
+    c1, c2 = st.columns(2)
+    with c1:
+        uploaded_file1 = st.file_uploader("Upload Source A", type=["xlsx", "csv", "json"])
+    with c2:
+        uploaded_file2 = st.file_uploader("Upload Source B", type=["xlsx", "csv", "json"])
 
-        if uploaded_file1 and uploaded_file2:
-            # Read files
+    if uploaded_file1 or uploaded_file2:
+        if uploaded_file1:
             if data_source == "Excel (.xlsx)":
                 df1 = pd.read_excel(uploaded_file1)
-                df2 = pd.read_excel(uploaded_file2)
             elif data_source == "CSV (.csv)":
                 df1 = pd.read_csv(uploaded_file1)
-                df2 = pd.read_csv(uploaded_file2)
-            elif data_source == "JSON (.json)":
-                df1 = pd.read_json(uploaded_file1)
-                df2 = pd.read_json(uploaded_file2)
             else:
-                st.error("Unsupported format.")
-                st.stop()
+                df1 = pd.read_json(uploaded_file1)
 
-            st.success("✅ Data loaded successfully!")
-
-            # Preview data
+            st.success("✅ Source A imported successfully!")
             st.write("### 🔍 Preview Source A")
             st.dataframe(df1.head(), use_container_width=True)
+
+        if uploaded_file2:
+            if data_source == "Excel (.xlsx)":
+                df2 = pd.read_excel(uploaded_file2)
+            elif data_source == "CSV (.csv)":
+                df2 = pd.read_csv(uploaded_file2)
+            else:
+                df2 = pd.read_json(uploaded_file2)
+
+            st.success("✅ Source B imported successfully!")
             st.write("### 🔍 Preview Source B")
             st.dataframe(df2.head(), use_container_width=True)
 
-            # Save to DB
-            st.markdown("### 💾 Save Data into Database")
-            table_a = st.text_input("Enter table name for Source A", "source_a")
-            table_b = st.text_input("Enter table name for Source B", "source_b")
+        # Step 4: Save data into DB
+        st.markdown("### 4️⃣ Save Imported Data to Database")
+        conn = connect_db(selected_db)
 
-            if st.button("💾 Save to Database"):
-                try:
-                    conn = connect_db(selected_db)
-                    df1.to_sql(table_a, conn, if_exists="replace", index=False)
-                    df2.to_sql(table_b, conn, if_exists="replace", index=False)
-                    conn.close()
-                    st.success(f"🎉 Data saved successfully in '{selected_db}' as '{table_a}' and '{table_b}'.")
-                except Exception as e:
-                    st.error(f"❌ Error saving data: {e}")
+        if uploaded_file1:
+            table_a = st.text_input("Enter table name for Source A", "source_a")
+            if st.button("💾 Save Source A to DB"):
+                df1.to_sql(table_a, conn, if_exists="replace", index=False)
+                st.success(f"✅ '{table_a}' table saved successfully in '{selected_db}'")
+
+        if uploaded_file2:
+            table_b = st.text_input("Enter table name for Source B", "source_b")
+            if st.button("💾 Save Source B to DB"):
+                df2.to_sql(table_b, conn, if_exists="replace", index=False)
+                st.success(f"✅ '{table_b}' table saved successfully in '{selected_db}'")
+
+        conn.close()
 
 # -------------------------------------------------
 # 🗄 DATABASE MODULE
@@ -187,4 +194,4 @@ elif module == "🔗 Mapping":
                     mapping[col] = mapped
 
             st.json(mapping)
-            st.success("✅ Mapping ready (visual arrows can be added later).")
+            st.success("✅ Mapping ready (visual arrow UI will be next).")
